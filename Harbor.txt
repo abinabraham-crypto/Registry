@@ -186,4 +186,8 @@ spec:
         - containerPort: 80
 	  imagePullSecrets:
       - name: regcred	
-<<<<<<<<<<<<<<<<<<<<<<<<<<<	  
+<<<<<<<<<<<<<<<<<<<<<<<<<<<	
+
+
+https://github.com/abinabraham-crypto/Registry/blob/main/Harbor-end-script.sh
+https://github.com/abinabraham-crypto/Registry/blob/main/Harbor-init-script.bash
