@@ -1,0 +1,189 @@
+#Harbor private image registry-server
+
+https://goharbor.io/docs/2.3.0/install-config/installation-prereqs/
+
+
+
+***install docker engine
+
+https://docs.docker.com/engine/installation/
+
+
+
+***install docker compose
+
+https://docs.docker.com/compose/install/
+
+url:- https://github.com/docker/compose/releases
+
+wget https://github.com/docker/compose/releases/download/v2.0.1/docker-compose-linux-x86_64
+
+wget https://github.com/docker/compose/releases/download/v2.0.1/docker-compose-linux-x86_64.sha256
+
+***install openssl
+
+
+
+***download offline installer for air-gapped installation
+
+url:- https://github.com/goharbor/harbor/releases
+
+wget https://github.com/goharbor/harbor/releases/download/v2.3.3/harbor-offline-installer-v2.3.3.tgz
+
+wget https://github.com/goharbor/harbor/releases/download/v2.3.3/harbor-offline-installer-v2.3.3.tgz.asc
+
+gpg --keyserver hkps://keyserver.ubuntu.com --receive-keys 644FF454C0B4115C
+
+gpg -v --keyserver hkps://keyserver.ubuntu.com --verify harbor-offline-installer-v2.3.3.tgz.asc
+
+tar xzvf harbor-offline-installer-version.tgz
+
+
+
+***generate certficates and copy them to the docker /etc/docker/certs.d/<domainname> and /data/certs (configure HTTPS access)
+
+openssl genrsa -out ca.key 4096
+
+openssl req -x509 -new -nodes -sha512 -days 3650 -subj "/CN=harbor.barwabank.com" -key ca.key -out ca.crt
+
+openssl genrsa -out harbor.barwabank.com.key 4096
+
+openssl req -sha512 -new -subj "/CN=harbor.barwabank.com" -key harbor.barwabank.com.key -out harbor.barwabank.com.csr
+
+cat > v3.ext <<-EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1=harbor.barwabank.com
+DNS.2=harbor.barwabank
+DNS.3=hqprdrchadlv01
+EOF
+
+openssl x509 -req -sha512 -days 3650 \
+    -extfile v3.ext \
+    -CA ca.crt -CAkey ca.key -CAcreateserial \
+    -in harbor.barwabank.com.csr \
+    -out harbor.barwabank.com.crt
+	
+cp harbor.barwabank.com.crt /data/cert/
+cp harbor.barwabank.com.key /data/cert/
+
+openssl x509 -inform PEM -in harbor.barwabank.com.crt -out harbor.barwabank.com.cert
+
+cp harbor.barwabank.com.cert /etc/docker/certs.d/harbor.barwabank.com/
+cp harbor.barwabank.com.key /etc/docker/certs.d/harbor.barwabank.com/
+cp ca.crt /etc/docker/certs.d/harbor.barwabank.com/
+
+#restart docker
+
+***configure harbor.yml
+
+add hostname, add path to crt and key directory
+
+-> hostname
+-> 
+
+./install.sh
+
+
+
+***access the web console
+
+***add entry to the hosts file in local machine (C:\Windows\System32\drivers\etc)
+
+https://harbor.vismaya.sles.lan
+
+
+
+***cred: user:- admin password:- Harbor12345
+
+***create a label in the harbor 
+
+***get sample push command from the harbor web console
+
+docker tag <image>
+
+docker login https://harbor.vismaya.sles.lan -u <username> -p <password>
+
+docker push <image>
+
+
+
+***create secret in the namespace so that deployment can use the secret to pull images from the harbor registry
+
+kubectl create secret docker-registry regcred \
+ --docker-server=<your-registry-server> \
+ --docker-username=<your-name> \
+ --docker-password=<your-pword> \
+ --docker-email=<your-email>
+
+
+
+***copy certficates to worker nodes /etc/docker && add entry in /etc/hosts
+
+scp certs.tar root@38.91.102.73:/etc/docker
+
+tar -xvf certs.tar
+
+nano /etc/hosts
+
+38.91.102.56   harbor.vismaya.sles.lan
+
+
+
+***edit docker sysconfig file and comment proxy section /etc/sysconfig/docker (client side) && restart docker
+
+#https_proxy
+#http_proxy
+
+systemctl restart docker
+
+
+
+***restart the harbor again to change the updates
+
+./prepare
+
+docker-compose down -v
+
+docker-compose up -d
+
+
+
+***pull-secret for private registry
+<<<<<<<<<<<<<<<<<<<<<<<<<<<
+kubectl create secret docker-registry regcred \
+  --docker-server=https://harbor.barwabank.com \
+  --docker-username=mpay-admin \
+  --docker-password=P@ssw0rd123 \
+  --docker-email=mpay@barwabank.com
+  
+>>>>>>>>>>>>>>>>>>>>>>>>>>>
+***sample deployment
+>>>>>>>>>>>>>>>>>>>>>>>>>>>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nginx
+spec:
+  selector:
+    matchLabels:
+      run: my-nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+      - name: my-nginx
+        image: nginx #replace image with your registry image
+        ports:
+        - containerPort: 80
+	  imagePullSecrets:
+      - name: regcred	
+<<<<<<<<<<<<<<<<<<<<<<<<<<<	  
